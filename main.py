@@ -83,6 +83,19 @@ with open('./milMatriculasParaRetificar.csv', 'r', encoding='utf-8') as archive:
         campo.clear()
         campo.send_keys(texto_observacao)
         time.sleep(0.7)
+        
+        # 4.1. Verifica se o volume de esgoto é 0 e a Situação de Esgoto é LIGADO (3)
+        esgotoVolume = driver.find_element(By.XPATH, value="//input[@name='consumoEsgoto']")
+        esgotoSituacao = driver.find_element(By.XPATH, value="//select[@name='situacaoEsgotoConta']")
+
+        # Captura os valores atuais dos campos na tela
+        valor_volume = esgotoVolume.get_attribute("value").strip()
+        select_esgoto = Select(esgotoSituacao)
+        situacao_atual = select_esgoto.first_selected_option.get_attribute("value")
+
+        # Se volume for "0" e situação for "3" (LIGADO), altera para "1" (POTENCIAL)
+        if valor_volume == "0" and situacao_atual == "3":
+            select_esgoto.select_by_value("1")
 
         # 5. Salva janela principal e abre o Pop-up de Créditos
         janela_principal = driver.current_window_handle

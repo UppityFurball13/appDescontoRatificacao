@@ -18,8 +18,8 @@ driver = webdriver.Chrome(options=chrome_options)
 # Faz login no GSAN
 username = "LUCIANAVERA"
 password = "Kati@04"
-login_url = "http://10.39.192.79:8080/gsan/efetuarLoginAction.do"
-manter_conta = "http://10.39.192.79:8080/gsan/exibirManterContaAction.do?menu=sim"
+login_url = "https://g1.caema.ma.gov.br/gsan/"
+manter_conta = "https://g1.caema.ma.gov.br/gsan/exibirManterContaAction.do?menu=sim"
 driver.get(login_url)
 
 driver.find_element(By.XPATH, "//input[@name='login']").send_keys(username)
@@ -193,9 +193,24 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
         creditoOrigem_select = driver.find_element(By.XPATH, "//select[@name='creditoOrigemID']")
         Select(creditoOrigem_select).select_by_value("6")
 
-        # Clica em Inserir e retorna o foco para a janela principal
+        # Clica em Inserir na janela Pop-up
         driver.find_element(By.XPATH, "//input[@value='Inserir']").click()
+        time.sleep(0.8)  # Aguarda o sistema processar ou fechar o pop-up
+
+        # Verifica se a janela secundária ainda está aberta
+        if len(driver.window_handles) > 1:
+            spans_duplicado = driver.find_elements(
+                By.XPATH, "//span[contains(text(),'Tipo de Débito/Crédito selecionado já foi informad')]"
+            )
+            if len(spans_duplicado) > 0:
+                print(f"-> Aviso no Pop-up ({matricula}): Crédito já informado anteriormente. Fechando pop-up...")
+            
+            # Força o fechamento da janela secundária
+            driver.close()
+
+        # Retorna o foco para a janela principal e segue o programa normalmente
         driver.switch_to.window(janela_principal)
+
 
         # 7. Clica em Retificar e aceita o alerta
         time.sleep(0.5)
@@ -203,15 +218,31 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
         time.sleep(0.5)
         button_retificar.click()
 
+    # Aceita o primeiro alerta (Data de vencimento anterior à data corrente)
         dataVencimentoAnteriorDataCorrente = WebDriverWait(driver, 15).until(EC.alert_is_present())
         dataVencimentoAnteriorDataCorrente.accept()
 
-        time.sleep(1)
+        # Verifica se aparece um SEGUNDO alerta em até 2 segundos e o CANCELA (.dismiss())
+        try:
+            segundo_alerta = WebDriverWait(driver, 2).until(EC.alert_is_present())
+            print(f"-> Segundo alerta detectado ({segundo_alerta.text}). Cancelando...")
+            segundo_alerta.dismiss()
+        except TimeoutException:
+            # Se não aparecer um segundo alerta dentro de 2 segundos, segue o fluxo normalmente
+            pass
+
+        # Aguarda a página de resposta carregar completamente (Sucesso ou botão Voltar)
+        WebDriverWait(driver, 20).until(
+            EC.any_of(
+                EC.presence_of_element_located((By.XPATH, '//*[@id="botaoBack"]/input')),
+                EC.presence_of_element_located((By.XPATH, "//strong[normalize-space()='Realizar outra Manutençao de Conta']"))
+            )
+        )
 
         # 7.1. Verifica se o botão "Voltar" (botaoBack) apareceu na tela (indicando erro/bloqueio)
         botoes_voltar = driver.find_elements(By.XPATH, '//*[@id="botaoBack"]/input')
 
-        if len(botoes_voltar) > 0 and botoes_voltar[0].is_displayed():
+        if len(botoes_voltar) > 0 and botoes_voltar.is_displayed():
             mensagem_erro = driver.find_element(
                 By.XPATH, '/html/body/table/tbody/tr/td/table/tbody/tr/td/span'
             ).text.strip()
@@ -219,7 +250,7 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
             print(f"-> Erro após retificar Matrícula {matricula}: {mensagem_erro}")
             registrar_status(matricula, referencia, valor_bruto, mensagem_erro)
 
-            botoes_voltar[0].click()
+            botoes_voltar.click()
             time.sleep(0.5)
             driver.get(manter_conta)
             time.sleep(0.5)

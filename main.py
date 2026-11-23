@@ -88,7 +88,7 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
 
         # 1. Pesquisa a matrícula
         matricula_field = driver.find_element(By. XPATH, value="//input[@name='idImovel']")
-        time.sleep(0.7)
+        time.sleep(0.9)
         matricula_field.clear()
         time.sleep(0.7)
         matricula_field.send_keys(matricula, Keys.RETURN)
@@ -106,7 +106,7 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
         # 3. Tenta encontrar e clicar na referência da conta
         try:
             botton_idImovel = driver.find_element(By.XPATH, value = xpathA)
-            time.sleep(0.5)
+            time.sleep(0.7)
             botton_idImovel.click()
 
         except (TimeoutException, NoSuchElementException):

@@ -231,30 +231,52 @@ with open(arquivo_csv, 'r', encoding='utf-8') as archive:
             # Se não aparecer um segundo alerta dentro de 2 segundos, segue o fluxo normalmente
             pass
 
-        # Aguarda a página de resposta carregar completamente (Sucesso ou botão Voltar)
+                # Aguarda a página de resposta carregar completamente (Sucesso, botaoVoltar ou botaoBack)
         WebDriverWait(driver, 20).until(
             EC.any_of(
+                EC.presence_of_element_located((By.XPATH, "//input[@name='botaoVoltar']")),
                 EC.presence_of_element_located((By.XPATH, '//*[@id="botaoBack"]/input')),
                 EC.presence_of_element_located((By.XPATH, "//strong[normalize-space()='Realizar outra Manutençao de Conta']"))
             )
         )
 
-        # 7.1. Verifica se o botão "Voltar" (botaoBack) apareceu na tela (indicando erro/bloqueio)
-        botoes_voltar = driver.find_elements(By.XPATH, '//*[@id="botaoBack"]/input')
+        # 7.1.A Verifica o erro específico de conta negativa (usa //input[@name='botaoVoltar'])
+        spans_negativo = driver.find_elements(
+            By.XPATH, "//span[normalize-space()='Valor total da conta não pode ser negativo.']"
+        )
 
-        if len(botoes_voltar) > 0 and botoes_voltar.is_displayed():
-            mensagem_erro = driver.find_element(
-                By.XPATH, '/html/body/table/tbody/tr/td/table/tbody/tr/td/span'
-            ).text.strip()
+        if len(spans_negativo) > 0:
+            status = spans_negativo[0].text.strip()
 
-            print(f"-> Erro após retificar Matrícula {matricula}: {mensagem_erro}")
-            registrar_status(matricula, referencia, valor_bruto, mensagem_erro)
+            print(f"-> Erro após retificar Matrícula {matricula}: {status}. Registrando e pulando...")
+            registrar_status(matricula, referencia, valor_bruto, status)
 
-            botoes_voltar.click()
+            botao_voltar = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//input[@name='botaoVoltar']"))
+            )
+            botao_voltar.click()
             time.sleep(0.5)
             driver.get(manter_conta)
             time.sleep(0.5)
             continue
+
+        # 7.1.B Verifica outros erros/bloqueios que exibem o botaoBack (//*[@id="botaoBack"]/input)
+        botoes_back = driver.find_elements(By.XPATH, '//*[@id="botaoBack"]/input')
+
+        if len(botoes_back) > 0 and botoes_back[0].is_displayed():
+            mensagem_erro = driver.find_element(
+                By.XPATH, '/html/body/table/tbody/tr/td/table[3]/tbody/tr[1]/td[2]/span'
+            ).text.strip()
+
+            print(f"-> Erro após retificar Matrícula {matricula}: {mensagem_erro}. Registrando e pulando...")
+            registrar_status(matricula, referencia, valor_bruto, mensagem_erro)
+
+            botoes_back[0].click()
+            time.sleep(0.5)
+            driver.get(manter_conta)
+            time.sleep(0.5)
+            continue
+
 
         # 7.2. Registra no CSV que a matrícula foi retificada com sucesso
         time.sleep(0.5)

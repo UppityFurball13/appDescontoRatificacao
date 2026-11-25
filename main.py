@@ -16,8 +16,8 @@ chrome_options.add_experimental_option("detach", True)
 driver = webdriver.Chrome(options=chrome_options)
 
 # Faz login no GSAN
-username = "LUCIANAVERA"
-password = "Kati@04"
+username = ""
+password = ""
 login_url = "https://g1.caema.ma.gov.br/gsan/"
 manter_conta = "https://g1.caema.ma.gov.br/gsan/exibirManterContaAction.do?menu=sim"
 driver.get(login_url)
